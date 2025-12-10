@@ -1,84 +1,81 @@
 import express from "express";
-import Tehtava from "../models/tehtavaModel.js";
+import Task from "../models/tehtavaModel.js";
 
-const reititin = express.Router();
+const router = express.Router();
 
-// Hae kaikki tehtävät
-reititin.get("/", async (pyynto, vastaus) => {
+// GET /api/tasks – hae kaikki tehtävät
+router.get("/", async (req, res) => {
   try {
-    const tehtavat = await Tehtava.find().sort({ luotuAika: -1 });
-    vastaus.json(tehtavat);
-  } catch (virhe) {
-    console.error("Virhe haettaessa tehtäviä:", virhe);
-    vastaus.status(500).json({ virhe: "Tehtävien haku epäonnistui" });
+    const tasks = await Task.find().sort({ createdAt: -1 });
+    res.json(tasks);
+  } catch (error) {
+    console.error("Virhe haettaessa tehtäviä:", error);
+    res.status(500).json({ error: "Tehtävien haku epäonnistui" });
   }
 });
 
-// Lisää uusi tehtävä
-reititin.post("/", async (pyynto, vastaus) => {
+// POST /api/tasks – lisää uusi tehtävä
+router.post("/", async (req, res) => {
   try {
-    const { otsikko, kuvaus } = pyynto.body;
+    const { content } = req.body;
 
-    if (!otsikko || !otsikko.trim()) {
-      return vastaus.status(400).json({ virhe: "Otsikko on pakollinen" });
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: "Content on pakollinen" });
     }
 
-    const uusiTehtava = new Tehtava({
-      otsikko: otsikko.trim(),
-      kuvaus: (kuvaus || "").trim(),
+    const newTask = new Task({
+      content: content.trim(),
     });
 
-    const tallennettu = await uusiTehtava.save();
-    vastaus.status(201).json(tallennettu);
-  } catch (virhe) {
-    console.error("Virhe lisättäessä tehtävää:", virhe);
-    vastaus.status(500).json({ virhe: "Tehtävän lisääminen epäonnistui" });
+    const saved = await newTask.save();
+    res.status(201).json(saved);
+  } catch (error) {
+    console.error("Virhe lisättäessä tehtävää:", error);
+    res.status(500).json({ error: "Tehtävän lisääminen epäonnistui" });
   }
 });
 
-// Päivitä tehtävä (esim. merkitse valmiiksi)
-reititin.put("/:id", async (pyynto, vastaus) => {
+// PUT /api/tasks/:id – päivitä tehtävän tila (tai content, jos halutaan)
+router.put("/:id", async (req, res) => {
   try {
-    const { id } = pyynto.params;
-    const { otsikko, kuvaus, valmis } = pyynto.body;
+    const { id } = req.params;
+    const { content, isDone } = req.body;
 
-    const paivitettavat = {};
+    const updatedFields = {};
+    if (content !== undefined) updatedFields.content = content;
+    if (isDone !== undefined) updatedFields.isDone = isDone;
 
-    if (otsikko !== undefined) paivitettavat.otsikko = otsikko;
-    if (kuvaus !== undefined) paivitettavat.kuvaus = kuvaus;
-    if (valmis !== undefined) paivitettavat.valmis = valmis;
-
-    const paivitetty = await Tehtava.findByIdAndUpdate(id, paivitettavat, {
+    const updated = await Task.findByIdAndUpdate(id, updatedFields, {
       new: true,
     });
 
-    if (!paivitetty) {
-      return vastaus.status(404).json({ virhe: "Tehtävää ei löytynyt" });
+    if (!updated) {
+      return res.status(404).json({ error: "Tehtävää ei löytynyt" });
     }
 
-    vastaus.json(paivitetty);
-  } catch (virhe) {
-    console.error("Virhe päivitettäessä tehtävää:", virhe);
-    vastaus.status(500).json({ virhe: "Tehtävän päivitys epäonnistui" });
+    res.json(updated);
+  } catch (error) {
+    console.error("Virhe päivitettäessä tehtävää:", error);
+    res.status(500).json({ error: "Tehtävän päivitys epäonnistui" });
   }
 });
 
-// Poista tehtävä
-reititin.delete("/:id", async (pyynto, vastaus) => {
+// DELETE /api/tasks/:id – poista tehtävä
+router.delete("/:id", async (req, res) => {
   try {
-    const { id } = pyynto.params;
+    const { id } = req.params;
 
-    const poistettu = await Tehtava.findByIdAndDelete(id);
+    const deleted = await Task.findByIdAndDelete(id);
 
-    if (!poistettu) {
-      return vastaus.status(404).json({ virhe: "Tehtävää ei löytynyt" });
+    if (!deleted) {
+      return res.status(404).json({ error: "Tehtävää ei löytynyt" });
     }
 
-    vastaus.status(204).end();
-  } catch (virhe) {
-    console.error("Virhe poistettaessa tehtävää:", virhe);
-    vastaus.status(500).json({ virhe: "Tehtävän poisto epäonnistui" });
+    res.status(204).end();
+  } catch (error) {
+    console.error("Virhe poistettaessa tehtävää:", error);
+    res.status(500).json({ error: "Tehtävän poisto epäonnistui" });
   }
 });
 
-export default reititin;
+export default router;
