@@ -1,140 +1,91 @@
-import { useState, useEffect } from "react";
-import axios from "axios";
+import { useEffect, useState } from "react";
+import taskService from "./services/tasks";
+import TaskList from "./components/TaskList";
+import AddTaskForm from "./components/AddTaskForm";
+import SearchBar from "./components/SearchBar";
 
 function App() {
-  const [tehtavat, asetaTehtavat] = useState([]);
-  const [otsikko, asetaOtsikko] = useState("");
-  const [kuvaus, asetaKuvaus] = useState("");
+  const [tasks, setTasks] = useState([]);
+  const [newContent, setNewContent] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
 
-  // Haetaan tehtävät backendistä kun sovellus käynnistyy
+  // Haetaan tehtävät backEndistä alussa
   useEffect(() => {
-    axios
-      .get("http://localhost:3001/api/tehtavat")
-      .then((vastaus) => {
-        asetaTehtavat(vastaus.data);
+    taskService
+      .getAll()
+      .then((data) => {
+        setTasks(data);
       })
-      .catch((virhe) => {
-        console.error("Virhe haettaessa tehtäviä:", virhe);
+      .catch((error) => {
+        console.error("Virhe haettaessa tehtäviä:", error);
       });
   }, []);
 
-  // Uuden tehtävän lisääminen
-  const lisaatehtava = (e) => {
+  const handleAddTask = (e) => {
     e.preventDefault();
+    if (!newContent.trim()) return;
 
-    if (!otsikko.trim()) {
-      return;
-    }
+    const newTask = {
+      content: newContent.trim(),
+    };
 
-    axios
-      .post("http://localhost:3001/api/tehtavat", {
-        otsikko: otsikko.trim(),
-        kuvaus: kuvaus.trim(),
+    taskService
+      .create(newTask)
+      .then((created) => {
+        setTasks([created, ...tasks]);
+        setNewContent("");
       })
-      .then((vastaus) => {
-        // lisätään uusi tehtävä listan alkuun
-        asetaTehtavat([vastaus.data, ...tehtavat]);
-        asetaOtsikko("");
-        asetaKuvaus("");
-      })
-      .catch((virhe) => {
-        console.error("Virhe lisättäessä tehtävää:", virhe);
+      .catch((error) => {
+        console.error("Virhe lisättäessä tehtävää:", error);
       });
   };
 
-  // Tehtävän poistaminen
-  const poistaTehtava = (id) => {
-    axios
-      .delete(`http://localhost:3001/api/tehtavat/${id}`)
+  const handleToggleDone = (id, currentIsDone) => {
+    taskService
+      .update(id, { isDone: !currentIsDone })
+      .then((updated) => {
+        setTasks(tasks.map((t) => (t.id === id ? updated : t)));
+      })
+      .catch((error) => {
+        console.error("Virhe päivitettäessä tehtävää:", error);
+      });
+  };
+
+  const handleDeleteTask = (id) => {
+    taskService
+      .remove(id)
       .then(() => {
-        asetaTehtavat(tehtavat.filter((t) => t._id !== id && t.id !== id));
+        setTasks(tasks.filter((t) => t.id !== id));
       })
-      .catch((virhe) => {
-        console.error("Virhe poistettaessa tehtävää:", virhe);
+      .catch((error) => {
+        console.error("Virhe poistettaessa tehtävää:", error);
       });
   };
 
-  // Tehtävän merkitseminen valmiiksi / ei valmiiksi
-  const vaihdaValmis = (id, nykyinenValmis) => {
-    axios
-      .put(`http://localhost:3001/api/tehtavat/${id}`, {
-        valmis: !nykyinenValmis,
-      })
-      .then((vastaus) => {
-        const paivitetty = vastaus.data;
-        asetaTehtavat(
-          tehtavat.map((t) =>
-            t._id === id || t.id === id ? paivitetty : t
-          )
-        );
-      })
-      .catch((virhe) => {
-        console.error("Virhe päivitettäessä tehtävää:", virhe);
-      });
-  };
+  const filteredTasks = tasks.filter((t) =>
+    t.content.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1rem" }}>
-      <h1>Tehtävälista</h1>
+      <h1>Tehtävienhallinta</h1>
 
-      <form onSubmit={lisaatehtava}>
-        <input
-          type="text"
-          placeholder="Otsikko"
-          value={otsikko}
-          onChange={(e) => asetaOtsikko(e.target.value)}
-        />
-        <br />
-        <textarea
-          placeholder="Kuvaus"
-          value={kuvaus}
-          onChange={(e) => asetaKuvaus(e.target.value)}
-          style={{ width: "100%", height: "60px", marginTop: "0.5rem" }}
-        />
-        <br />
-        <button type="submit" style={{ marginTop: "0.5rem" }}>
-          Lisää tehtävä
-        </button>
-      </form>
+      <AddTaskForm
+        onSubmit={handleAddTask}
+        content={newContent}
+        onContentChange={setNewContent}
+      />
 
-      <hr />
+      <SearchBar
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+      />
 
-      <ul>
-        {tehtavat.map((t) => (
-          <li key={t._id || t.id}>
-            <label>
-              <input
-                type="checkbox"
-                checked={t.valmis}
-                onChange={() => vaihdaValmis(t._id || t.id, t.valmis)}
-              />
-              <span
-                style={{
-                  textDecoration: t.valmis ? "line-through" : "none",
-                  marginLeft: "0.5rem",
-                }}
-              >
-                <strong>{t.otsikko}</strong>
-              </span>
-            </label>
-            <br />
-            <small>{t.kuvaus}</small>
-            <br />
-            {t.luotuAika && (
-              <small>{new Date(t.luotuAika).toLocaleString()}</small>
-            )}
-            <br />
-            <button
-              onClick={() => poistaTehtava(t._id || t.id)}
-              style={{ marginTop: "0.5rem" }}
-            >
-              Poista
-            </button>
-            <br />
-            <br />
-          </li>
-        ))}
-      </ul>
+      <TaskList
+        tasks={filteredTasks}
+        onToggleDone={handleToggleDone}
+        onDelete={handleDeleteTask}
+      />
     </div>
   );
 }
