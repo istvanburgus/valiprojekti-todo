@@ -1,25 +1,29 @@
 import mongoose from "mongoose";
 
-const tehtavaSchema = new mongoose.Schema({
-  otsikko: {
+const taskSchema = new mongoose.Schema({
+  content: {
     type: String,
     required: true,
     trim: true,
   },
-  kuvaus: {
-    type: String,
-    trim: true,
-  },
-  valmis: {
+  isDone: {
     type: Boolean,
     default: false,
   },
-  luotuAika: {
+  createdAt: {
     type: Date,
     default: Date.now,
   },
 });
 
-const Tehtava = mongoose.model("Tehtava", tehtavaSchema);
+taskSchema.set("toJSON", {
+  transform: (document, returnedObject) => {
+    returnedObject.id = returnedObject._id.toString();
+    delete returnedObject._id;
+    delete returnedObject.__v;
+  },
+});
 
-export default Tehtava;
+const Task = mongoose.model("Task", taskSchema);
+
+export default Task;
