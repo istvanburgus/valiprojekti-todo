@@ -2,33 +2,33 @@ import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
 import "dotenv/config";
-import tehtavaReitit from "./routes/tehtavaRoutes.js";
+import taskRoutes from "./routes/tehtavaRoutes.js";
 
-const sovellus = express();
+const app = express();
 
-sovellus.use(cors());
-sovellus.use(express.json());
+app.use(cors());
+app.use(express.json());
 
-// Yhdistetään MongoDB:hen
+// MongoDB-yhteys
 mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("Yhteys MongoDB:hen onnistui");
   })
-  .catch((virhe) => {
-    console.error("Virhe yhdistäessä MongoDB:hen:", virhe.message);
+  .catch((error) => {
+    console.error("Virhe yhdistäessä MongoDB:hen:", error.message);
   });
 
-// Testireitti
-sovellus.get("/api/terve", (pyynto, vastaus) => {
-  vastaus.json({ viesti: "Backendi toimii ja Mongo-yhteys yritetään!" });
+// Testireitti (maradhat)
+app.get("/api/terve", (req, res) => {
+  res.json({ viesti: "Backendi toimii ja Mongo-yhteys yritetään!" });
 });
 
-// Tehtävä-reitit
-sovellus.use("/api/tehtavat", tehtavaReitit);
+// TÄRKE: nyt /api/tasks, kuten tehtävässä
+app.use("/api/tasks", taskRoutes);
 
-const portti = process.env.PORT || 3001;
+const port = process.env.PORT || 3001;
 
-sovellus.listen(portti, () => {
-  console.log(`Palvelin käynnissä portissa ${portti}`);
+app.listen(port, () => {
+  console.log(`Palvelin käynnissä portissa ${port}`);
 });
