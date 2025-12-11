@@ -1,6 +1,11 @@
 const TaskItem = ({ task, onToggleDone, onDelete }) => {
   return (
-    <li>
+    <li
+      style={{
+        padding: "0.5rem 0",
+        borderBottom: "1px solid #ddd",
+      }}
+    >
       <label>
         <input
           type="checkbox"
@@ -18,12 +23,22 @@ const TaskItem = ({ task, onToggleDone, onDelete }) => {
       </label>
       <br />
       {task.createdAt && (
-        <small>{new Date(task.createdAt).toLocaleString()}</small>
+        <small style={{ color: "#666" }}>
+          {new Date(task.createdAt).toLocaleString()}
+        </small>
       )}
       <br />
       <button
         onClick={() => onDelete(task.id)}
-        style={{ marginTop: "0.5rem" }}
+        style={{
+          marginTop: "0.5rem",
+          padding: "5px 10px",
+          borderRadius: "4px",
+          border: "none",
+          backgroundColor: "#cc0000",
+          color: "white",
+          cursor: "pointer",
+        }}
       >
         Poista
       </button>
