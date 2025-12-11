@@ -19,13 +19,32 @@ mongoose
     console.error("Virhe yhdistäessä MongoDB:hen:", error.message);
   });
 
-// Testireitti (maradhat)
+// Testireitti
 app.get("/api/terve", (req, res) => {
   res.json({ viesti: "Backendi toimii ja Mongo-yhteys yritetään!" });
 });
 
-// TÄRKE: nyt /api/tasks, kuten tehtävässä
+// Varsinaiset task-reitit /api/tasks
 app.use("/api/tasks", taskRoutes);
+
+// Tuntematon endpoint
+const unknownEndpoint = (req, res) => {
+  res.status(404).json({ error: "Tuntematon endpoint" });
+};
+app.use(unknownEndpoint);
+
+// Virheidenkäsittely middleware
+const errorHandler = (error, req, res, next) => {
+  console.error(error.message);
+
+  if (error.name === "CastError") {
+    return res.status(400).json({ error: "Virheellinen id" });
+  }
+
+  res.status(500).json({ error: "Palvelimella tapahtui virhe" });
+};
+
+app.use(errorHandler);
 
 const port = process.env.PORT || 3001;
 
