@@ -4,23 +4,23 @@ import Task from "../models/tehtavaModel.js";
 const router = express.Router();
 
 // GET /api/tasks – hae kaikki tehtävät
-router.get("/", async (req, res) => {
+router.get("/", async (req, res, next) => {
   try {
     const tasks = await Task.find().sort({ createdAt: -1 });
     res.json(tasks);
   } catch (error) {
-    console.error("Virhe haettaessa tehtäviä:", error);
-    res.status(500).json({ error: "Tehtävien haku epäonnistui" });
+    next(error);
   }
 });
 
 // POST /api/tasks – lisää uusi tehtävä
-router.post("/", async (req, res) => {
+router.post("/", async (req, res, next) => {
   try {
     const { content } = req.body;
 
     if (!content || !content.trim()) {
-      return res.status(400).json({ error: "Content on pakollinen" });
+      // käyttäjä yrittää lisätä tehtävän ilman sisältöä
+      return res.status(400).json({ error: "Tehtävän sisältö ei voi olla tyhjä" });
     }
 
     const newTask = new Task({
@@ -30,19 +30,23 @@ router.post("/", async (req, res) => {
     const saved = await newTask.save();
     res.status(201).json(saved);
   } catch (error) {
-    console.error("Virhe lisättäessä tehtävää:", error);
-    res.status(500).json({ error: "Tehtävän lisääminen epäonnistui" });
+    next(error);
   }
 });
 
-// PUT /api/tasks/:id – päivitä tehtävän tila (tai content, jos halutaan)
-router.put("/:id", async (req, res) => {
+// PUT /api/tasks/:id – päivitä tehtävän tila tai sisältö
+router.put("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
     const { content, isDone } = req.body;
 
     const updatedFields = {};
-    if (content !== undefined) updatedFields.content = content;
+    if (content !== undefined) {
+      if (!content.trim()) {
+        return res.status(400).json({ error: "Tehtävän sisältö ei voi olla tyhjä" });
+      }
+      updatedFields.content = content.trim();
+    }
     if (isDone !== undefined) updatedFields.isDone = isDone;
 
     const updated = await Task.findByIdAndUpdate(id, updatedFields, {
@@ -50,31 +54,31 @@ router.put("/:id", async (req, res) => {
     });
 
     if (!updated) {
+      // käyttäjä yrittää muokata tehtävää, jota ei löydy
       return res.status(404).json({ error: "Tehtävää ei löytynyt" });
     }
 
     res.json(updated);
   } catch (error) {
-    console.error("Virhe päivitettäessä tehtävää:", error);
-    res.status(500).json({ error: "Tehtävän päivitys epäonnistui" });
+    next(error);
   }
 });
 
 // DELETE /api/tasks/:id – poista tehtävä
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", async (req, res, next) => {
   try {
     const { id } = req.params;
 
     const deleted = await Task.findByIdAndDelete(id);
 
     if (!deleted) {
+      // käyttäjä yrittää poistaa tehtävää, jota ei löydy
       return res.status(404).json({ error: "Tehtävää ei löytynyt" });
     }
 
     res.status(204).end();
   } catch (error) {
-    console.error("Virhe poistettaessa tehtävää:", error);
-    res.status(500).json({ error: "Tehtävän poisto epäonnistui" });
+    next(error);
   }
 });
 
