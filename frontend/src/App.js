@@ -8,6 +8,7 @@ function App() {
   const [tasks, setTasks] = useState([]);
   const [newContent, setNewContent] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   // Haetaan tehtävät backEndistä alussa
   useEffect(() => {
@@ -18,12 +19,23 @@ function App() {
       })
       .catch((error) => {
         console.error("Virhe haettaessa tehtäviä:", error);
+        setErrorMessage("Tehtäviä ei voitu hakea palvelimelta.");
       });
   }, []);
 
+  const showError = (msg) => {
+    setErrorMessage(msg);
+    setTimeout(() => {
+      setErrorMessage("");
+    }, 5000);
+  };
+
   const handleAddTask = (e) => {
     e.preventDefault();
-    if (!newContent.trim()) return;
+    if (!newContent.trim()) {
+      showError("Tehtävän sisältö ei voi olla tyhjä.");
+      return;
+    }
 
     const newTask = {
       content: newContent.trim(),
@@ -37,6 +49,12 @@ function App() {
       })
       .catch((error) => {
         console.error("Virhe lisättäessä tehtävää:", error);
+
+        if (error.response && error.response.data && error.response.data.error) {
+          showError(error.response.data.error);
+        } else {
+          showError("Tehtävän lisääminen epäonnistui.");
+        }
       });
   };
 
@@ -48,6 +66,12 @@ function App() {
       })
       .catch((error) => {
         console.error("Virhe päivitettäessä tehtävää:", error);
+
+        if (error.response && error.response.status === 404) {
+          showError("Tehtävää ei löytynyt (se on ehkä jo poistettu).");
+        } else {
+          showError("Tehtävän päivitys epäonnistui.");
+        }
       });
   };
 
@@ -59,6 +83,12 @@ function App() {
       })
       .catch((error) => {
         console.error("Virhe poistettaessa tehtävää:", error);
+
+        if (error.response && error.response.status === 404) {
+          showError("Tehtävää ei löytynyt (se on ehkä jo poistettu).");
+        } else {
+          showError("Tehtävän poisto epäonnistui.");
+        }
       });
   };
 
@@ -67,25 +97,58 @@ function App() {
   );
 
   return (
-    <div style={{ maxWidth: "600px", margin: "0 auto", padding: "1rem" }}>
-      <h1>Tehtävienhallinta</h1>
+    <div
+      style={{
+        minHeight: "100vh",
+        margin: 0,
+        padding: 0,
+        backgroundColor: "#f4f4f4",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "700px",
+          margin: "2rem auto",
+          padding: "1.5rem",
+          backgroundColor: "white",
+          borderRadius: "8px",
+          boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h1>Tehtävienhallinta</h1>
 
-      <AddTaskForm
-        onSubmit={handleAddTask}
-        content={newContent}
-        onContentChange={setNewContent}
-      />
+        {errorMessage && (
+          <div
+            style={{
+              backgroundColor: "#ffe0e0",
+              border: "1px solid #ff4d4d",
+              padding: "0.75rem",
+              marginBottom: "1rem",
+              borderRadius: "5px",
+            }}
+          >
+            {errorMessage}
+          </div>
+        )}
 
-      <SearchBar
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-      />
+        <AddTaskForm
+          onSubmit={handleAddTask}
+          content={newContent}
+          onContentChange={setNewContent}
+        />
 
-      <TaskList
-        tasks={filteredTasks}
-        onToggleDone={handleToggleDone}
-        onDelete={handleDeleteTask}
-      />
+        <SearchBar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+        />
+
+        <TaskList
+          tasks={filteredTasks}
+          onToggleDone={handleToggleDone}
+          onDelete={handleDeleteTask}
+        />
+      </div>
     </div>
   );
 }
